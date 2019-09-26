@@ -100,7 +100,7 @@ shinyUI(dashboardPage(skin="red",
                                    numericInput('tasa_exito', 'Tasa de Éxito', 0.15)
                                    ),
                             column(width = 3,
-                                   numericInput('maxima.promesa', 'Máxima Promesa %', 70))
+                                   numericInput('maxima.promesa', 'Máxima Promesa %', 60))
                             )),
                     
                     box(
@@ -111,13 +111,15 @@ shinyUI(dashboardPage(skin="red",
                             column(width=3,
                                    numericInput("deuda", "Total Deuda", 1000000, min=1000000)),
                                    #verbatimTextOutput("value")),
-                            column(width=6,
-                                   sliderInput("%_reduccion", "Promesa de Reducción %", min = 0, max = 100, 30)),
-                                   #verbatimTextOutput('promesa')),
+                            # column(width=6,
+                            #        sliderInput("%_reduccion", "Promesa de Reducción %", min = 0, max = 100, 30)),
+                            #        #verbatimTextOutput('promesa')),
+                            # column(width=3,
+                            #        #offset = 2,
+                            #        numericInput("tiempo", "Tiempo del proceso", 18, min=6)),
+                            #        #sliderInput("tiempo", "Tiempo", min = 0, max = 48, 12)),
                             column(width=3,
-                                   #offset = 2,
-                                   numericInput("tiempo", "Tiempo del proceso", 18, min=6)),
-                                   #sliderInput("tiempo", "Tiempo", min = 0, max = 48, 12)),
+                                   checkboxInput('diferir','SI DIFERIR MATRICULA', F)),
                             column(width=6,
                                    sliderInput('time', 'Tiempo', min = 1, max = 48, 12)),
                             column(width=3,
@@ -130,7 +132,8 @@ shinyUI(dashboardPage(skin="red",
                         ),
                     fluidRow(
                         valueBoxOutput('prom.desc'),
-                        valueBoxOutput('cuota')
+                        valueBoxOutput('cuota'),
+                        valueBoxOutput('matricula.val')
                     ),
                     
                     ## CONDICIONES DE CONTRATO ####
@@ -168,6 +171,12 @@ shinyUI(dashboardPage(skin="red",
                                      ),
                             fluidRow( column(width=12,
                                              plotOutput("resultados"))
+                                      ),
+                            fluidRow( column(width=12,
+                                             plotOutput("resultados1"))
+                                      ),
+                            fluidRow( column(width=12,
+                                             plotOutput("resultados2"))
                                       )
                             )
                             )

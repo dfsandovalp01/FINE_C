@@ -53,6 +53,7 @@ shinyServer(function(input, output) {
     
     SALDO.INICIAL <- numeric()
     CUOTA <- numeric()
+    CUOTA1 <- numeric()
     ABONO <- numeric()
     ABONO.ACUMULADO <- numeric()
     MATRICULA <- numeric()
@@ -69,14 +70,16 @@ shinyServer(function(input, output) {
         
         for(j in 1:p){
             MES[j] <<- j
-            CUOTA[j] <<- round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = 1)
-            ABONO[j] <<-  round(n_d/p, digits = 1)
-            ABONO.ACUMULADO[j] <<- round(sum(ABONO[1:j]), digits = 1)
-            PAGOS[j] <<- round(CUOTA[1]*j, digits = 1) 
-            SALDO.INICIAL[j+1] <<- round(SALDO.INICIAL[j]-ABONO[j], digits = 1)
-            MATRICULA <<- round(matricula/p, digits = 2)
-            MANEJO <<- round(mensual, digits = 1)
+            CUOTA[j] <<- round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = -1)
+            ABONO[j] <<-  round(n_d/p, digits = -1)
+            ABONO.ACUMULADO[j] <<- round(sum(ABONO[1:j]), digits = -1)
+            PAGOS[j] <<- round(CUOTA[1]*j, digits = -1) 
+            SALDO.INICIAL[j+1] <<- round(SALDO.INICIAL[j]-ABONO[j], digits = -1)
+            MATRICULA <<- round(matricula/p, digits = -2)
+            MANEJO <<- round(mensual, digits = -1)
             EXITO <<- round(d*tasa.exito/p)
+            
+            CUOTA1[j] <<- round((n_d/p)+((d*tasa.exito)/p)+(mensual), digits = 1)
             
             
         }
@@ -145,7 +148,10 @@ shinyServer(function(input, output) {
     
     cuota <- reactive({
       #function(d, n_d, matricula, mensual, p, tasa.exito)
-      round((nuevo_saldo_sf()/input$time)+((matricula())/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1)
+      ifelse(input$diferir == T, 
+             round((nuevo_saldo_sf()/input$time)+((matricula())/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1),
+             round((nuevo_saldo_sf()/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1))
+      
     })
     
     
@@ -155,7 +161,8 @@ shinyServer(function(input, output) {
     })
     
     output$bono.mora <- renderPrint({
-      cuota()
+      input$diferir
+      #cuota()
       #tiempo_mora()
       #promesa.por.mora()
       #promesa_descuento()
@@ -219,17 +226,29 @@ shinyServer(function(input, output) {
       )
     })
     
+    output$matricula.val <- renderValueBox({
+      valueBox(
+        paste('$', round(matricula(), digits = -2)),
+        'MATRICULA', icon = icon('globe'), color = 'blue'
+      )
+    })
+    
 
     ##          amortizacion (cuota minima para pago 170000) ####
-    output$amortizacion <- renderDataTable({
-        
-        t.pago(input$deuda, nuevo_saldo_sf(), matricula(), hrs_mensuales(), input$time, input$tasa_exito)
-        
-        tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA,ABONO,ABONO.ACUMULADO, PAGOS, MATRICULA, MANEJO, EXITO)
-        
-        tabla.amort.fine <- tabla.amort.fine[1:(nrow(tabla.amort.fine)-1),] %>%
-            as.data.frame() 
-    })
+    
+   
+    output$amortizacion <-  renderDataTable({
+      
+      t.pago(input$deuda, nuevo_saldo_sf(), matricula(), hrs_mensuales(), input$time, input$tasa_exito)
+      
+      ifelse(input$diferir == T, tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA,ABONO,ABONO.ACUMULADO, PAGOS, MATRICULA, MANEJO, EXITO),
+             tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA1,ABONO,ABONO.ACUMULADO, PAGOS, MANEJO, EXITO))
+      
+      tabla.amort.fine <- tabla.amort.fine[1:(nrow(tabla.amort.fine)-1),] %>%
+        as.data.frame() 
+    }) 
+    
+   
     
     
     ##          Tabla Clientes ####
@@ -242,27 +261,94 @@ shinyServer(function(input, output) {
     output$resultados <- renderPlot({
         # load library
         library(ggplot2)
-        
-        # Create test data.
-        data <- data.frame(
-            category=c("Pago a Bancos", "Comisión FINE", "Ahorro"),
-            count=c((nuevo_saldo_sf()), beneficios(), ahorro())
-        )
-        
-        # Compute percentages
-        data$fraction = data$count / sum(data$count)
-        
-        # Compute the cumulative percentages (top of each rectangle)
-        data$ymax = cumsum(data$fraction)
-        
-        # Compute the bottom of each rectangle
-        data$ymin = c(0, head(data$ymax, n=-1))
-        
-        # Make the plot
-        ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
-            geom_rect() +
-            coord_polar(theta="y") + # Try to remove that to understand how the chart is built initially
-            xlim(c(2, 4)) # Try to remove that to see how to make a pie chart
+      
+      # Create test data.
+      data <- data.frame(
+        category=c("Pago a Bancos", "Comisión FINE", "Ahorro"),
+        count=c(round(nuevo_saldo_sf(), digits = -2), round(beneficios(), digits = -2), round(ahorro(), digits = -2))
+      )
+      
+      # Compute percentages
+      data$fraction <- data$count / sum(data$count)
+      
+      # Compute the cumulative percentages (top of each rectangle)
+      data$ymax <- cumsum(data$fraction)
+      
+      # Compute the bottom of each rectangle
+      data$ymin <- c(0, head(data$ymax, n=-1))
+      
+      # Compute label position
+      data$labelPosition <- (data$ymax + data$ymin) / 2
+      
+      # Compute a good label
+      data$label <- paste0(data$category, "\n value: ", data$count)
+      
+      # Make the plot
+      ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+        geom_rect() +
+        geom_text( x=2, aes(y=labelPosition, label=label, color=category), size=6) + # x here controls label position (inner / outer)
+        scale_fill_brewer(palette=3) +
+        scale_color_brewer(palette=3) +
+        coord_polar(theta="y") +
+        xlim(c(-1, 4)) +
+        theme_void() +
+        theme(legend.position = "none")
+    })
+    
+    output$resultados1 <- renderPlot({
+      # Create test data.
+      data <- data.frame(
+          category=c("Pago a Bancos", "Comisión FINE", "Ahorro"),
+          count=c((nuevo_saldo_sf()), beneficios(), ahorro())
+      )
+
+      # Compute percentages
+      data$fraction = data$count / sum(data$count)
+
+      # Compute the cumulative percentages (top of each rectangle)
+      data$ymax = cumsum(data$fraction)
+
+      # Compute the bottom of each rectangle
+      data$ymin = c(0, head(data$ymax, n=-1))
+
+      # Make the plot
+      ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+          geom_rect() +
+          coord_polar(theta="y") + # Try to remove that to understand how the chart is built initially
+          xlim(c(2, 4)) # Try to remove that to see how to make a pie chart
+    })
+    
+    output$resultados2 <- renderPlot({
+      # Create test data.
+      data <- data.frame(
+        category=c("Pago a Bancos", "Comisión FINE", "Ahorro"),
+        count=c(round(nuevo_saldo_sf(), digits = -2), round(beneficios(), digits = -2), round(ahorro(), digits = -2))
+      )
+      
+      # Compute percentages
+      data$fraction <- data$count / sum(data$count)
+      
+      # Compute the cumulative percentages (top of each rectangle)
+      data$ymax <- cumsum(data$fraction)
+      
+      # Compute the bottom of each rectangle
+      data$ymin <- c(0, head(data$ymax, n=-1))
+      
+      # Compute label position
+      data$labelPosition <- (data$ymax + data$ymin) / 2
+      
+      # Compute a good label
+      data$label <- paste0(data$category, "\n value: ", data$count)
+      
+      # Make the plot
+      ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+        geom_rect() +
+        geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
+        scale_fill_brewer(palette=4) +
+        coord_polar(theta="y") +
+        xlim(c(2, 4)) +
+        theme_void() +
+        theme(legend.position = "none")
     })
 
 })
