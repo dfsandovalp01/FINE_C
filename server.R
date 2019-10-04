@@ -52,34 +52,88 @@ shinyServer(function(input, output) {
     options(scipen = 999)
     
     SALDO.INICIAL <- numeric()
+    SALDO.INICIAL1 <- numeric()
     CUOTA <- numeric()
     CUOTA1 <- numeric()
     ABONO <- numeric()
+    ABONO1 <- numeric()
     ABONO.ACUMULADO <- numeric()
+    ABONO.ACUMULADO1 <- numeric()
     MATRICULA <- numeric()
+    MATRICULA1 <- numeric()
     MANEJO <- numeric()
+    MANEJO1 <- numeric()
+    MANEJO.ACUMULADO <- numeric()
+    MANEJO.ACUMULADO1 <- numeric()
     EXITO <- numeric()
+    EXITO.ACUMULADO <- numeric()
     MES <- numeric()
     PAGOS <- numeric()
+    PAGOS1 <- numeric()
    
     
     t.pago <- function(d, n_d, matricula, mensual, p, tasa.exito){ # d=deuda n_d=nuevadeuda hrs=honorarios_fine p=periodos
       
-        SALDO.INICIAL[1] <<- round(n_d)
-        PAGOS[1] <<- round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = 1)
+        SALDO.INICIAL[1] <<- round(n_d, digits = -1)
+        CUOTA[1] <<- round((n_d/p)+((d*tasa.exito)/p)+(mensual), digits = 0) #((matricula)/p)+
         
-        for(j in 1:p){
+        PAGOS[1] <<- round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = -1)
+        # MATRICULA1[1] <<- ifelse(matricula > CUOTA[1], 
+        #                          CUOTA[1], 
+        #                          matricula)
+        MATRICULA1[1] <<- ifelse(input$diferir ==F,
+                                 matricula,
+                                 ifelse(matricula > CUOTA[1],
+                                        CUOTA[1],
+                                        matricula)
+                                 )
+        CUOTA1[1] <<- ifelse(input$diferir == F,
+                             matricula,
+                             # ifelse(matricula < CUOTA[1],
+                             #        CUOTA[1],
+                             #        matricula),
+                             CUOTA[1])
+        SALDO.INICIAL1[1] <<- 0 #round(n_d, digits = -1)
+        #SALDO.INICIAL1[2] <<- round(n_d, digits = -1)
+        ABONO1[1] <<- 0
+          # ifelse(matricula < CUOTA1[1],
+          #                    (CUOTA1[1] - MATRICULA1[1]),
+          #                    0)
+        MANEJO1[1] <<- 0
+        EXITO[1] <<-0
+        #MANEJO.ACUMULADO1[1] <<- 0
+        
+        for(j in 1:(p+1)){
             MES[j] <<- j
-            CUOTA[j] <<- round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = -1)
-            ABONO[j] <<-  round(n_d/p, digits = -1)
-            ABONO.ACUMULADO[j] <<- round(sum(ABONO[1:j]), digits = -1)
+            CUOTA[j] <<- CUOTA[1] #round((n_d/p)+((matricula)/p)+((d*tasa.exito)/p)+(mensual), digits = -1)
+            ABONO[j] <<-  round(SALDO.INICIAL[1]/p, digits = 0)
+            ABONO.ACUMULADO[j] <<- round(sum(ABONO[1:j]), digits = 0)
             PAGOS[j] <<- round(CUOTA[1]*j, digits = -1) 
             SALDO.INICIAL[j+1] <<- round(SALDO.INICIAL[j]-ABONO[j], digits = -1)
-            MATRICULA <<- round(matricula/p, digits = -2)
-            MANEJO <<- round(mensual, digits = -1)
-            EXITO <<- round(d*tasa.exito/p)
+            MATRICULA <<- round(matricula/p, digits = -1)
+            MANEJO[j] <<- round(mensual, digits = -1)
+            MANEJO.ACUMULADO[j] <<- round(sum(MANEJO[1:j]), digits = -1)
+            EXITO[j+1] <<- round(d*tasa.exito/p)
+            EXITO.ACUMULADO[j] <<- round(sum(EXITO[1:j]), digits = -1)
             
-            CUOTA1[j] <<- round((n_d/p)+((d*tasa.exito)/p)+(mensual), digits = 1)
+            
+            CUOTA1[j+1] <<- CUOTA[1] 
+            MATRICULA1[j+1] <<-  ifelse(sum(MATRICULA1[1:j]) < matricula,
+                                        matricula - sum(MATRICULA1[1:j]),
+                                        0)
+            SALDO.INICIAL1[j+1] <<- ifelse(SALDO.INICIAL1[j] == 0,
+                                           round(n_d, digits = -1),
+                                           round(SALDO.INICIAL1[j]-ABONO1[j], digits = -1)
+                                           )
+            ABONO1[j+1] <<- ifelse(ABONO1[j] == 0,
+                                   round(n_d/p, digits = 0),
+                                   round(n_d/p, digits = 0)
+                                   )
+            ABONO.ACUMULADO1[j] <<- round(sum(ABONO1[1:j]), digits = 0)
+            PAGOS1[j] <<- round(sum(CUOTA1[1:j]), digits = -1)
+            MANEJO1[j+1] <<- round(mensual, digits = -1)
+            MANEJO.ACUMULADO1[j] <<- round(sum(MANEJO1[1:j]), digits = 0) 
+            
             
             
         }
@@ -91,7 +145,7 @@ shinyServer(function(input, output) {
     
     tiempo_mora <- reactive({
      as.numeric(ymd(c(Sys.Date()))-ymd(c(input$inicio.mora))) 
-       
+     #as.numeric(ymd(c(Sys.Date()))-ymd(c("2016-10-01")))  
     }) #valor numerico igual a dias entre fecha actual y fecha mora
     
     promesa_descuento <- reactive({ #((A8^2)-1)/A8
@@ -112,30 +166,32 @@ shinyServer(function(input, output) {
     
     nivel_reduc <-reactive({
         #input$`%_reduccion`/100
-        promesa_descuento1()/100
+        #round(promesa_descuento1()/100, digits = -1)
+      promesa_descuento1()/100
     })
     ahorro <- reactive({
-        input$deuda*nivel_reduc()
+        round(input$deuda*nivel_reduc(), digits = -1)
     })
     prima_exito <- reactive({
-        (input$deuda*nivel_reduc())*input$tasa_exito
+        round((input$deuda*nivel_reduc())*input$tasa_exito, digits = -1)
     })
     
     matricula <- reactive({
-        input$deuda*input$tasa_matricula
+        round(input$deuda*input$tasa_matricula, digits = -1)
     })
     
     hrs_mensuales <- reactive({
-        input$deuda*input$tasa_manejo
+        round(input$deuda*input$tasa_manejo, digits = -1)
     })
     
     total_hrs <- reactive({
         # (input$deuda*0.021+(input$deuda*0.006*(input$tiempo-1)))
-      (input$deuda*0.021+(input$deuda*0.006*(input$time-1)))
+      round((input$deuda*input$tasa_matricula+(input$deuda*input$tasa_manejo*(input$time-1))), digits = -1)
+      #prima_exito()+(hrs_mensuales*input$time)#+matricula()
     })
     
     beneficios <- reactive({
-        prima_exito()+total_hrs()+matricula()
+        round(prima_exito()+total_hrs(), digits = -1)#+matricula()
     })
     
     nuevo_saldo_sf <- reactive({
@@ -148,10 +204,23 @@ shinyServer(function(input, output) {
     
     cuota <- reactive({
       #function(d, n_d, matricula, mensual, p, tasa.exito)
-      ifelse(input$diferir == T, 
-             round((nuevo_saldo_sf()/input$time)+((matricula())/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1),
-             round((nuevo_saldo_sf()/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1))
+      # ifelse(input$diferir == T, 
+      #        round((nuevo_saldo_sf()/input$time)+((matricula())/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1),
+      #        round((nuevo_saldo_sf()/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = 1))
+      round((nuevo_saldo_sf()/input$time)+((input$deuda*input$tasa_exito)/input$time)+(hrs_mensuales()), digits = -1)
+      # round((n_d/p)+((d*tasa.exito)/p)+(mensual), digits = -1) #((matricula)/p)+
       
+    })
+    
+    time.amort <- reactive({
+      input$time
+      # ifelse(input$diferir == F,
+      #        input$time + 1,
+      #        input$time) 
+    })
+    
+    ahorro.final <- reactive({
+      round(input$deuda-(nuevo_saldo_sf()+beneficios()))
     })
     
     
@@ -221,32 +290,53 @@ shinyServer(function(input, output) {
     
     output$cuota <- renderValueBox({
       valueBox(
-        paste('$', round(cuota(), digits = -2)),
+        paste('$', round(cuota(), digits = -1)),
         'CUOTA', icon = icon('business-time'), color = 'green'
       )
     })
     
     output$matricula.val <- renderValueBox({
       valueBox(
-        paste('$', round(matricula(), digits = -2)),
-        'MATRICULA', icon = icon('globe'), color = 'blue'
+        paste('$', round(matricula(), digits = -1)),
+        'MATRICULA', icon = icon('address-card'), color = 'blue'
       )
     })
     
 
     ##          amortizacion (cuota minima para pago 170000) ####
     
-   
-    output$amortizacion <-  renderDataTable({
+    #boton generar tabla
+    observeEvent(input$amort.bott, {
+      output$amortizacion <-  renderDataTable({
       
       t.pago(input$deuda, nuevo_saldo_sf(), matricula(), hrs_mensuales(), input$time, input$tasa_exito)
       
-      ifelse(input$diferir == T, tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA,ABONO,ABONO.ACUMULADO, PAGOS, MATRICULA, MANEJO, EXITO),
-             tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA1,ABONO,ABONO.ACUMULADO, PAGOS, MANEJO, EXITO))
+      
+      ifelse(input$diferir == T, 
+             tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA,ABONO,ABONO.ACUMULADO, PAGOS, MATRICULA, MANEJO, MANEJO.ACUMULADO, EXITO, EXITO.ACUMULADO, MATRICULA1, CUOTA1),
+             tabla.amort.fine <- cbind(MES,CUOTA1,PAGOS1,SALDO.INICIAL1,ABONO1,ABONO.ACUMULADO1, MANEJO1, MANEJO.ACUMULADO1, EXITO, EXITO.ACUMULADO, MATRICULA1)
+      )
       
       tabla.amort.fine <- tabla.amort.fine[1:(nrow(tabla.amort.fine)-1),] %>%
-        as.data.frame() 
-    }) 
+        as.data.frame()
+      
+      
+    })}) 
+    # output$amortizacion <-  renderDataTable({
+    #   
+    #   t.pago(input$deuda, nuevo_saldo_sf(), matricula(), hrs_mensuales(), input$time, input$tasa_exito)
+    #   
+    #   
+    #   ifelse(input$diferir == T, 
+    #          tabla.amort.fine <- cbind(MES,SALDO.INICIAL,CUOTA,ABONO,ABONO.ACUMULADO, PAGOS, MATRICULA, MANEJO, MANEJO.ACUMULADO, EXITO, EXITO.ACUMULADO, MATRICULA1, CUOTA1),
+    #          tabla.amort.fine <- cbind(MES,SALDO.INICIAL1,CUOTA1,ABONO1,ABONO.ACUMULADO1, PAGOS1, MANEJO1, MANEJO.ACUMULADO1, EXITO, EXITO.ACUMULADO, MATRICULA1)
+    #          )
+    #   
+    #   tabla.amort.fine <- tabla.amort.fine[1:(nrow(tabla.amort.fine)-1),] %>%
+    #     as.data.frame()
+    #   
+    #          
+    # }) 
     
    
     
@@ -322,7 +412,7 @@ shinyServer(function(input, output) {
       # Create test data.
       data <- data.frame(
         category=c("Pago a Bancos", "Comisión FINE", "Ahorro"),
-        count=c(round(nuevo_saldo_sf(), digits = -2), round(beneficios(), digits = -2), round(ahorro(), digits = -2))
+        count=c(round(nuevo_saldo_sf(), digits = -2), round(beneficios(), digits = -2), round(ahorro.final(), digits = -2))
       )
       
       # Compute percentages

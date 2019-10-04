@@ -69,7 +69,7 @@ shinyUI(dashboardPage(skin="red",
             ## CALCULADORA FINE ####
             tabItem(tabName = "calculadora",
                     fluidRow(
-                        tags$img(src="OP1.jpeg", width="10%")
+                        tags$img(src="OP1.jpeg", width="100%")
                     ),
                     fluidRow(
                         valueBoxOutput("beneficios"),
@@ -130,6 +130,7 @@ shinyUI(dashboardPage(skin="red",
                                    verbatimTextOutput("time.difference"))
                             )
                         ),
+                    
                     fluidRow(
                         valueBoxOutput('prom.desc'),
                         valueBoxOutput('cuota'),
@@ -162,22 +163,24 @@ shinyUI(dashboardPage(skin="red",
                                        verbatimTextOutput("total_hrs"))
                                    )
                                 ),
+                        actionButton('amort.bott', 'GENERAR TABLA'),
                         ## AMORTIZACIÓN ####
                         box(title = "AMORTIZACIÓN",
-                            width = 6,
-                            fluidRow(column(width = 4,
-                                            dataTableOutput("amortizacion")
-                                            )
-                                     ),
-                            fluidRow( column(width=12,
-                                             plotOutput("resultados"))
-                                      ),
-                            fluidRow( column(width=12,
-                                             plotOutput("resultados1"))
-                                      ),
+                            width = 12,
                             fluidRow( column(width=12,
                                              plotOutput("resultados2"))
-                                      )
+                            ),
+                            fluidRow(column(width = 12,
+                                            dataTableOutput("amortizacion")
+                                            )
+                                     )
+                            # fluidRow( column(width=12,
+                            #                  plotOutput("resultados"))
+                            #           ),
+                            # fluidRow( column(width=12,
+                            #                  plotOutput("resultados1"))
+                            #           ),
+                            
                             )
                             )
             ))
