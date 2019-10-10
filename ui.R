@@ -11,9 +11,14 @@ library(shiny)
 library(shinydashboard)
 
 # Define UI for application that draws a histogram
-shinyUI(dashboardPage(skin="red",
+shinyUI(
+    
+    dashboardPage(skin="red",
+                 # includeCSS("styles.css"),
+                  
 ## DASHBOARD HEADER ####                      
-    dashboardHeader(disable = F,
+    dashboardHeader(
+        disable = F,
         title = "FinanCare" #tags$img(src="OP1_log-ConvertImage.png", style="width:122px", 
                          # tags$style(HTML('
                          #                 .skin-blue .main-header .logo {
@@ -27,12 +32,14 @@ shinyUI(dashboardPage(skin="red",
     dashboardSidebar(
         sidebarMenu(
             menuItem("HOME", tabName = "home", icon = icon("dashboard")),
-            menuItem("CALCULADORA FINE", tabName = "calculadora", icon = icon("percentage"),badgeLabel = "new", badgeColor = "green")
+            menuItem("CALCULADORA FINE", tabName = "calculadora", icon = icon("percentage"),badgeLabel = "new", badgeColor = "green"),
+            menuItem('PROPUESTA', tabName = 'propuesta', icon = icon('balance-scale'))
         )
     ),
     
 ## CUERPO APP (BODY) ####
     dashboardBody(
+        
         tabItems(
             ## HOME ####
             tabItem(
@@ -70,6 +77,9 @@ shinyUI(dashboardPage(skin="red",
             tabItem(tabName = "calculadora",
                     fluidRow(
                         tags$img(src="OP1.jpeg", width="100%")
+                    ),
+                    fluidRow(
+                        textInput('name.client', 'Nombre')
                     ),
                     fluidRow(
                         valueBoxOutput("beneficios"),
@@ -119,7 +129,7 @@ shinyUI(dashboardPage(skin="red",
                             #        numericInput("tiempo", "Tiempo del proceso", 18, min=6)),
                             #        #sliderInput("tiempo", "Tiempo", min = 0, max = 48, 12)),
                             column(width=3,
-                                   checkboxInput('diferir','SI DIFERIR MATRICULA', F)),
+                                   checkboxInput('diferir','DIFERIR MATRICULA', F)),
                             column(width=6,
                                    sliderInput('time', 'Tiempo', min = 1, max = 48, 12)),
                             column(width=3,
@@ -127,14 +137,17 @@ shinyUI(dashboardPage(skin="red",
                             column(width=3,
                                    verbatimTextOutput('bono.mora')),
                             column(width=3,
-                                   verbatimTextOutput("time.difference"))
+                                   verbatimTextOutput("time.difference")),
+                            column(width=3,
+                                   numericInput("desc.ficti", "Descuento Ficticio", 0.20, min=0))
                             )
                         ),
                     
                     fluidRow(
                         valueBoxOutput('prom.desc'),
                         valueBoxOutput('cuota'),
-                        valueBoxOutput('matricula.val')
+                        valueBoxOutput('matricula.val'),
+                        valueBoxOutput('ahorro.proceso')
                     ),
                     
                     ## CONDICIONES DE CONTRATO ####
@@ -163,13 +176,20 @@ shinyUI(dashboardPage(skin="red",
                                        verbatimTextOutput("total_hrs"))
                                    )
                                 ),
-                        actionButton('amort.bott', 'GENERAR TABLA'),
+                        actionButton('amort.bott', 'GENERAR TABLA', icon = icon('table')),
                         ## AMORTIZACIÓN ####
                         box(title = "AMORTIZACIÓN",
                             width = 12,
-                            fluidRow( column(width=12,
-                                             plotOutput("resultados2"))
+                            fluidRow( column(width=6,
+                                             plotOutput("resultados2")),
+                                      column(width=6,
+                                             plotOutput("profit")),
+                                      column(width=6,
+                                             plotOutput("con.mat"))
                             ),
+                            # fluidRow( column(width=12,
+                            #                  plotOutput("profit"))
+                            # ),
                             fluidRow(column(width = 12,
                                             dataTableOutput("amortizacion")
                                             )
@@ -183,7 +203,85 @@ shinyUI(dashboardPage(skin="red",
                             
                             )
                             )
-            ))
+            ),#cierre tabItem CALCULADORA FINE
+            
+            ## PROPUESTA
+            
+            tabItem(
+                tabName = 'propuesta',
+                fluidRow(
+                    tags$img(src="FINE.png", width="20%")
+                ),
+                fluidRow(h1('                                 ')),
+                # box(width = 12,
+                #     
+                #     # verticalLayout(verbatimTextOutput('ppt.nombre'),
+                #     #             verbatimTextOutput('ppt.deuda.total')),
+                #     # splitLayout(verbatimTextOutput('ppt.fecha'),
+                #     #             verbatimTextOutput('ppt.vigencia'))
+                #     ),
+                box(width=12,
+                    color='olive',
+                    style = "background-color: lightblue;",
+                    fluidRow(h1('                                 ')),
+                    fluidRow(
+                             valueBoxOutput('ppt.deuda')),
+                    splitLayout(valueBoxOutput('ppt.ahorro.proceso'),
+                                valueBoxOutput('ppt.tiempo')
+                    ),
+                    splitLayout(valueBoxOutput('ppt.cuota'),
+                                valueBoxOutput('ppt.matricula.val')
+                    )),
+                fluidRow(h1(textOutput('texto.oferta'), 
+                            style = "font-weight: 500; color: #004369; font-family: amaranth")),
+                #fluidRow(width=7,h3(textOutput('texto.oferta')), offset = 3),
+                #fluidRow(h4(textOutput('texto.oferta1'))),
+                #fluidRow(
+                    #valueBoxOutput('ppt.cuota'),
+                    #valueBoxOutput('ppt.matricula.val'),
+                    #valueBoxOutput('ppt.ahorro.proceso')),
+                
+                fluidRow(
+                    tags$img(src="4.png", width="100%")
+                )
+                
+                
+                
+            )
+            
+            # tabItem(
+            #     tabName = "propuesta",
+            #     fluidRow(
+            #         tags$img(src="financare_font.png", width="100%")),
+            #     tabsetPanel(
+            #         tabPanel('Clientes',
+            #                  box(
+            #                      fluidRow(
+            #                          title = 'Datos Cliente',
+            #                          column(width=3,
+            #                                 textInput('client_name','Nombre' )),
+            #                          column(width=3,
+            #                                 textInput('client_apellido','Apellido')),
+            #                          column(width=3,
+            #                                 textInput('client_cedula','C.C.')),
+            #                          column(width=3,
+            #                                 textInput('client_asesor','Asesor')),
+            #                          column(width=3,
+            #                                 textInput('client_numero', 'Numero')),
+            #                          column(width=3,
+            #                                 textInput('client_correo', 'Correo'))
+            #                      ),
+            #                      fluidRow(actionButton('new_client', 'Añadir'))
+            #                  )),
+            #         tabPanel("Aliados"),
+            #         tabPanel("Nosotros"),
+            #         tabPanel("Resultados")
+            #         
+            #     )
+            # )#endTabItem
+            
+            
+            )
         
     )
 ))

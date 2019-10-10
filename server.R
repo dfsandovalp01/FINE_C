@@ -160,7 +160,7 @@ shinyServer(function(input, output) {
     })
     
     promesa_descuento1 <- reactive({
-      ifelse(tiempo_mora() < 90, 0, promesa_descuento()+promesa.por.mora())
+      ifelse(tiempo_mora() < 90, 0, promesa_descuento())#+promesa.por.mora())
     })
     
     
@@ -168,6 +168,7 @@ shinyServer(function(input, output) {
         #input$`%_reduccion`/100
         #round(promesa_descuento1()/100, digits = -1)
       promesa_descuento1()/100
+      #input$desc.ficti
     })
     ahorro <- reactive({
         round(input$deuda*nivel_reduc(), digits = -1)
@@ -223,6 +224,9 @@ shinyServer(function(input, output) {
       round(input$deuda-(nuevo_saldo_sf()+beneficios()))
     })
     
+    ahorro.final.M <- reactive({
+      round(input$deuda-(nuevo_saldo_sf()+beneficios()+matricula()))
+    })
     
 ###             OUTPUTS CALCULADORA     ####
     output$time.difference<-renderPrint({
@@ -230,7 +234,8 @@ shinyServer(function(input, output) {
     })
     
     output$bono.mora <- renderPrint({
-      input$diferir
+      promesa.por.mora()
+      #input$diferir
       #cuota()
       #tiempo_mora()
       #promesa.por.mora()
@@ -284,7 +289,7 @@ shinyServer(function(input, output) {
     output$prom.desc <- renderValueBox({
       valueBox(
         paste(round(promesa_descuento1(), digits = 1), '%', sep = ''),
-        'PROMESA DESCUENTO', icon = icon('piggy-bank'), color = 'yellow'
+        'REDUCCION BANCOS', icon = icon('piggy-bank'), color = 'yellow'
       )
     })
     
@@ -295,6 +300,13 @@ shinyServer(function(input, output) {
       )
     })
     
+    output$ppt.cuota <- renderValueBox({##pagina pro
+      valueBox(
+        paste('$', round(cuota(), digits = -1)),
+        'CUOTA', icon = icon('donate'), color = 'green'
+      )
+    })
+    
     output$matricula.val <- renderValueBox({
       valueBox(
         paste('$', round(matricula(), digits = -1)),
@@ -302,6 +314,48 @@ shinyServer(function(input, output) {
       )
     })
     
+    output$ppt.matricula.val <- renderValueBox({##pagina ppt
+      valueBox(
+        paste('$', round(matricula(), digits = -1)),
+        'MATRICULA', icon = icon('address-card'), color = 'blue'
+      )
+    })
+    
+    output$ahorro.proceso <- renderValueBox({
+      valueBox(
+        paste(round((ahorro.final()/input$deuda)*100, digits = 0), '%'),
+        'AHORRO FINAL', icon = icon('address-card'), color = 'blue'
+      )
+    })
+    
+    output$ppt.ahorro.proceso <- renderValueBox({
+      valueBox(
+        paste(round((ahorro.final()/input$deuda)*100, digits = 0), '%'),
+        'AHORRO FINAL', icon = icon('piggy-bank'), color = 'blue'
+      )
+    })
+    
+    output$ppt.tiempo <- renderValueBox({
+      valueBox(
+        paste(input$time+1, ' meses', sep = ''),
+        'TIEMPO', icon = icon('calendar-alt')
+      )
+    })
+    
+    output$ppt.deuda <- renderValueBox({
+      valueBox(
+        paste('$', input$deuda, sep = ''),
+        'DEUDA INICIAL', icon = icon('file-invoice-dollar')
+      )
+    })
+    
+    output$ppt.nombre <- renderPrint({
+      paste('Nombre: ', input$name.client, sep = '')
+    })
+    
+    output$ppt.fecha <- renderPrint({
+      paste('Nombre: ', input$name.client, sep = '')
+    })
 
     ##          amortizacion (cuota minima para pago 170000) ####
     
@@ -338,8 +392,15 @@ shinyServer(function(input, output) {
     #          
     # }) 
     
-   
+   ## OFERTA
+    output$texto.oferta <- renderText({
+      paste('Cordial saludo ', input$name.client, '. \n', sep = '')
+    })
     
+    output$texto.oferta1 <- renderText({
+      paste('En Financare estamos para ayudarte a recuperar tu tranquilidad. A continuaciòn te enviamos
+            una propuesta para que puedas liquidar tus deudas. \n Muy pronto uno de nuestros analistas se pondra en contacto para continuar el proceso.', sep = '')
+    })
     
     ##          Tabla Clientes ####
     
@@ -440,5 +501,70 @@ shinyServer(function(input, output) {
         theme_void() +
         theme(legend.position = "none")
     })
-
+  
+    output$profit <- renderPlot({
+      # Create test data.
+      data <- data.frame(
+        category=c("PRIMA", "MANEJO"),
+        count=c(round(prima_exito(), digits = 0), round(total_hrs(), digits = 0))
+      )
+      
+      # Compute percentages
+      data$fraction <- data$count / sum(data$count)
+      
+      # Compute the cumulative percentages (top of each rectangle)
+      data$ymax <- cumsum(data$fraction)
+      
+      # Compute the bottom of each rectangle
+      data$ymin <- c(0, head(data$ymax, n=-1))
+      
+      # Compute label position
+      data$labelPosition <- (data$ymax + data$ymin) / 2
+      
+      # Compute a good label
+      data$label <- paste0(data$category, "\n value: ", data$count)
+      
+      # Make the plot
+      ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+        geom_rect() +
+        geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
+        scale_fill_brewer(palette=4) +
+        coord_polar(theta="y") +
+        xlim(c(2, 4)) +
+        theme_void() +
+        theme(legend.position = "none")
+    })
+    
+    output$con.mat <- renderPlot({
+      # Create test data.
+      data <- data.frame(
+        category=c("Pago a Bancos", "Comisión FINE", 'M', "Ahorro"),
+        count=c(round(nuevo_saldo_sf(), digits = -2), round(beneficios(), digits = -2), matricula(), round(ahorro.final.M(), digits = -2))
+      )
+      
+      # Compute percentages
+      data$fraction <- data$count / sum(data$count)
+      
+      # Compute the cumulative percentages (top of each rectangle)
+      data$ymax <- cumsum(data$fraction)
+      
+      # Compute the bottom of each rectangle
+      data$ymin <- c(0, head(data$ymax, n=-1))
+      
+      # Compute label position
+      data$labelPosition <- (data$ymax + data$ymin) / 2
+      
+      # Compute a good label
+      data$label <- paste0(data$category, "\n value: ", data$count)
+      
+      # Make the plot
+      ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
+        geom_rect() +
+        geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
+        scale_fill_brewer(palette=4) +
+        coord_polar(theta="y") +
+        xlim(c(2, 4)) +
+        theme_void() +
+        theme(legend.position = "none")
+    })
 })
